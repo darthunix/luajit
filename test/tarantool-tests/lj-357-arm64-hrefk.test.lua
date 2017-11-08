@@ -1,0 +1,27 @@
+local tap = require('tap')
+
+-- Test file to demonstrate the incorrect JIT behaviour for HREFK
+-- IR compilation on arm64.
+-- See also https://github.com/LuaJIT/LuaJIT/issues/357.
+local test = tap.test('lj-357-arm64-hrefk')
+test:plan(2)
+
+jit.opt.start('hotloop=1', 'hotexit=1')
+
+local t = {hrefk = 0}
+
+-- XXX: Need to generate a bunch of side traces (starts a new one
+-- when the hmask is changed) to wait, when the register allocator
+-- chooses the same register as a base register for offset and
+-- destination in LDR instruction.
+local START = 2e3
+local STOP = 1
+for i = START, STOP, -1 do
+  t.hrefk = t.hrefk - 1
+  t[t.hrefk] = i
+end
+
+test:is(t.hrefk, -START)
+test:is(t[t.hrefk], STOP)
+
+os.exit(test:check() and 0 or 1)
