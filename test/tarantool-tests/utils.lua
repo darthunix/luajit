@@ -3,10 +3,42 @@ local M = {}
 local ffi = require('ffi')
 local tap = require('tap')
 local bc = require('jit.bc')
+local bit = require('bit')
+
+local GCRef = ffi.abi('gc64') and 'uint64_t' or 'uint32_t'
+local LJ_GC_BLACK = 0x04
 
 ffi.cdef([[
   int setenv(const char *name, const char *value, int overwrite);
+  typedef struct {
+  ]]..GCRef..[[ nextgc;
+  uint8_t marked;
+  uint8_t gct;
+  /* Need this fields for correct alignment and sizeof. */
+  uint8_t misc1;
+  uint8_t misc2;
+  } GCHeader;
 ]])
+
+function M.gc_isblack(obj)
+  local objtype = type(obj)
+  assert(objtype ~= 'number' and objtype ~= 'boolean',
+         'can proceed only with GC objects')
+  local address
+  if objtype == 'string' then
+    -- XXX: get strdata first and go back to GCHeader.
+    address = ffi.cast('char *', obj)
+    address = address - (ffi.sizeof('GCHeader') + 8)
+  else
+    -- XXX: FFI ABI forbids to cast functions objects
+    -- to non-functional pointers, but we can get their address
+    -- via tostring.
+    local str_address = tostring(obj):gsub(objtype .. ': ', '')
+    address = tonumber(str_address)
+  end
+  local marked = ffi.cast('GCHeader *', address).marked
+  return bit.band(marked, LJ_GC_BLACK) == LJ_GC_BLACK
+end
 
 local function luacmd(args)
   -- arg[-1] is guaranteed to be not nil.
