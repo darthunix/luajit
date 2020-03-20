@@ -56,6 +56,7 @@ macro(BuildTestCLib lib sources)
   set(LD_LIBRARY_PATH "${CMAKE_CURRENT_BINARY_DIR}:${LD_LIBRARY_PATH}" PARENT_SCOPE)
 endmacro()
 
+add_subdirectory(ffi-ccall)
 add_subdirectory(gh-4427-ffi-sandwich)
 add_subdirectory(gh-6098-fix-side-exit-patching-on-arm64)
 add_subdirectory(gh-6189-cur_L)
