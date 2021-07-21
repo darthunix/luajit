@@ -11,7 +11,7 @@ local lshift = bit.lshift
 local string_format = string.format
 
 local LJM_MAGIC = "ljm"
-local LJM_CURRENT_VERSION = 1
+local LJM_CURRENT_VERSION = 0x02
 
 local LJM_EPILOGUE_HEADER = 0x80
 
@@ -24,8 +24,11 @@ local AEVENT_MASK = 0x3
 local ASOURCE_INT = lshift(1, 2)
 local ASOURCE_LFUNC = lshift(2, 2)
 local ASOURCE_CFUNC = lshift(3, 2)
+local ASOURCE_TRACE = lshift(4, 2)
 
-local ASOURCE_MASK = lshift(0x3, 2)
+local ASOURCE_MASK = lshift(0x7, 2)
+
+local EV_HEADER_MAX = ASOURCE_TRACE + AEVENT_REALLOC
 
 local M = {}
 
@@ -59,20 +62,24 @@ local function link_to_previous(heap_chunk, e, nsize)
   end
 end
 
-local function id_location(addr, line)
-  return string_format("f%#xl%d", addr, line), {
+local function id_location(addr, line, traceno)
+  return string_format("f%#xl%dt%d", addr, line, traceno), {
     addr = addr,
     line = line,
+    traceno = traceno,
   }
 end
 
 local function parse_location(reader, asource)
   if asource == ASOURCE_INT then
-    return id_location(0, 0)
+    return id_location(0, 0, 0)
   elseif asource == ASOURCE_CFUNC then
-    return id_location(reader:read_uleb128(), 0)
+    return id_location(reader:read_uleb128(), 0, 0)
   elseif asource == ASOURCE_LFUNC then
-    return id_location(reader:read_uleb128(), reader:read_uleb128())
+    return id_location(reader:read_uleb128(), reader:read_uleb128(), 0)
+  elseif asource == ASOURCE_TRACE then
+    return id_location(reader:read_uleb128(), reader:read_uleb128(),
+                       reader:read_uleb128())
   end
   error("Unknown asource "..asource)
 end
@@ -140,7 +147,7 @@ local parsers = {
 }
 
 local function ev_header_is_valid(evh)
-  return evh <= 0x0f or evh == LJM_EPILOGUE_HEADER
+  return evh <= EV_HEADER_MAX or evh == LJM_EPILOGUE_HEADER
 end
 
 -- Splits event header into event type (aka aevent = allocation

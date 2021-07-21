@@ -18,6 +18,8 @@
 #include "lj_obj.h"
 #include "lj_frame.h"
 #include "lj_debug.h"
+#include "lj_jit.h"
+#include "lj_dispatch.h"
 
 /* --------------------------------- Symtab --------------------------------- */
 
@@ -146,6 +148,23 @@ static void memprof_write_func(struct memprof *mp, uint8_t aevent)
     lua_assert(0);
 }
 
+static void memprof_write_trace(struct memprof *mp, uint8_t aevent)
+{
+  struct lj_wbuf *out = &mp->out;
+  const global_State *g = mp->g;
+  const jit_State *J = G2J(g);
+  const uint64_t traceno = g->vmstate;
+  const GCtrace *trace = traceref(J, traceno);
+  GCproto *pt = gco2pt(gcref(trace->startpt));
+  const BCIns *startpc = mref(trace->startpc, const BCIns);
+  const BCLine line = lj_debug_line(pt, proto_bcpos(pt, startpc));
+
+  lj_wbuf_addbyte(out, aevent | ASOURCE_TRACE);
+  lj_wbuf_addu64(out, (uintptr_t)pt);
+  lj_wbuf_addu64(out, line >= 0 ? (uint64_t)line : 0);
+  lj_wbuf_addu64(out, traceno);
+}
+
 static void memprof_write_hvmstate(struct memprof *mp, uint8_t aevent)
 {
   lj_wbuf_addbyte(&mp->out, aevent | ASOURCE_INT);
@@ -168,9 +187,12 @@ static const memprof_writer memprof_writers[] = {
   ** But since traces must follow the semantics of the original code,
   ** behaviour of Lua and JITted code must match 1:1 in terms of allocations,
   ** which makes using memprof with enabled JIT virtually redundant.
-  ** Hence use the stub below.
+  ** But if one wants to investigate allocations with JIT enabled,
+  ** memprof_write_trace() provides trace number and location in the
+  ** source code, where trace begins. It can be useful to compare with
+  ** jit.v or jit.dump outputs.
   */
-  memprof_write_hvmstate /* LJ_VMST_TRACE */
+  memprof_write_trace /* LJ_VMST_TRACE */
 };
 
 static void memprof_write_caller(struct memprof *mp, uint8_t aevent)

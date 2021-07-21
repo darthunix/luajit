@@ -7,7 +7,7 @@ require("utils").skipcond(
 local tap = require("tap")
 
 local test = tap.test("misc-memprof-lapi")
-test:plan(13)
+test:plan(14)
 
 jit.off()
 jit.flush()
@@ -22,7 +22,7 @@ local symtab = require "utils.symtab"
 local TMP_BINFILE = arg[0]:gsub(".+/([^/]+)%.test%.lua$", "%.%1.memprofdata.tmp.bin")
 local BAD_PATH = arg[0]:gsub(".+/([^/]+)%.test%.lua$", "%1/memprofdata.tmp.bin")
 
-local function payload()
+local function default_payload()
   -- Preallocate table to avoid table array part reallocations.
   local _ = table_new(100, 0)
 
@@ -37,7 +37,7 @@ local function payload()
   collectgarbage()
 end
 
-local function generate_output(filename)
+local function generate_output(filename, payload)
   -- Clean up all garbage to avoid pollution of free.
   collectgarbage()
 
@@ -50,6 +50,25 @@ local function generate_output(filename)
   res, err = misc.memprof.stop()
   -- Should stop succesfully.
   assert(res, err)
+end
+
+local function generate_parsed_output(payload)
+  local res, err = pcall(generate_output, TMP_BINFILE, payload)
+
+  -- Want to cleanup carefully if something went wrong.
+  if not res then
+    os.remove(TMP_BINFILE)
+    error(err)
+  end
+
+  local reader = bufread.new(TMP_BINFILE)
+  local symbols = symtab.parse(reader)
+  local events = memprof.parse(reader)
+
+  -- We don't need it any more.
+  os.remove(TMP_BINFILE)
+
+  return symbols, events
 end
 
 local function fill_ev_type(events, symbols, event_type)
@@ -107,20 +126,7 @@ test:ok(res == nil and err:match("profiler is not running"))
 test:ok(type(errno) == "number")
 
 -- Test profiler output and parse.
-res, err = pcall(generate_output, TMP_BINFILE)
-
--- Want to cleanup carefully if something went wrong.
-if not res then
-  os.remove(TMP_BINFILE)
-  error(err)
-end
-
-local reader = bufread.new(TMP_BINFILE)
-local symbols = symtab.parse(reader)
-local events = memprof.parse(reader, symbols)
-
--- We don't need it any more.
-os.remove(TMP_BINFILE)
+local symbols, events = generate_parsed_output(default_payload)
 
 local alloc = fill_ev_type(events, symbols, "alloc")
 local free = fill_ev_type(events, symbols, "free")
@@ -166,5 +172,20 @@ local co = coroutine.create(f)
 coroutine.resume(co)
 misc.memprof.stop()
 
+-- Test profiler with enabled JIT
 jit.on()
+
+-- Test grouping allocations by trace number
+jit.opt.start("-sink", "hotloop=1", 0)
+symbols, events = generate_parsed_output(default_payload)
+
+alloc = fill_ev_type(events, symbols, "alloc")
+
+-- We expect, that loops will be compiled into trace.
+-- So, there will be at least 1 allocation in the trace.
+test:ok(check_alloc_report(alloc, 30, 25, 97))
+
+-- Reset optimization options
+jit.opt.start()
+
 os.exit(test:check() and 0 or 1)

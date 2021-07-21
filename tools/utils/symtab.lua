@@ -75,16 +75,22 @@ end
 
 function M.demangle(symtab, loc)
   local addr = loc.addr
+  local traceno = loc.traceno
+  local sym
 
   if addr == 0 then
-    return "INTERNAL"
+    sym = "INTERNAL"
+  elseif symtab[addr] then
+    sym = string_format("%s:%d", symtab[addr].source, loc.line)
+  else
+    sym = string_format("CFUNC %#x", addr)
   end
 
-  if symtab[addr] then
-    return string_format("%s:%d", symtab[addr].source, loc.line)
+  if traceno ~= 0 then
+    sym = string_format("TRACE [%d] ", traceno)..sym
   end
 
-  return string_format("CFUNC %#x", addr)
+  return sym
 end
 
 return M
