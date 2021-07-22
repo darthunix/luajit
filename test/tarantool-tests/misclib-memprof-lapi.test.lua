@@ -4,10 +4,17 @@ require("utils").skipcond(
   jit.arch.." architecture is NIY for memprof"
 )
 
+local jit_opt_default = {
+    3, -- level
+    "hotloop=56",
+    "hotexit=10",
+    "minstitch=0",
+}
+
 local tap = require("tap")
 
 local test = tap.test("misc-memprof-lapi")
-test:plan(14)
+test:plan(15)
 
 jit.off()
 jit.flush()
@@ -22,7 +29,7 @@ local symtab = require "utils.symtab"
 local TMP_BINFILE = arg[0]:gsub(".+/([^/]+)%.test%.lua$", "%.%1.memprofdata.tmp.bin")
 local BAD_PATH = arg[0]:gsub(".+/([^/]+)%.test%.lua$", "%1/memprofdata.tmp.bin")
 
-local function default_payload()
+local function test_payload()
   -- Preallocate table to avoid table array part reallocations.
   local _ = table_new(100, 0)
 
@@ -74,6 +81,7 @@ end
 local function fill_ev_type(events, symbols, event_type)
   local ev_type = {}
   for _, event in pairs(events[event_type]) do
+    print(symtab.demangle(symbols, event.loc))
     local addr = event.loc.addr
     if addr == 0 then
       ev_type.INTERNAL = {
@@ -85,6 +93,7 @@ local function fill_ev_type(events, symbols, event_type)
         name = string.format(
           "%s:%d", symbols[addr].source, symbols[addr].linedefined
         ),
+        traceno = event.loc.traceno,
         num = event.num,
       }
     end
@@ -96,8 +105,9 @@ local function form_source_line(line)
   return string.format("@%s:%d", arg[0], line)
 end
 
-local function check_alloc_report(alloc, line, function_line, nevents)
+local function check_alloc_report(alloc, traceno, line, function_line, nevents)
   assert(form_source_line(function_line) == alloc[line].name)
+  assert(traceno == alloc[line].traceno)
   assert(alloc[line].num == nevents, ("got=%d, expected=%d"):format(
     alloc[line].num,
     nevents
@@ -126,7 +136,7 @@ test:ok(res == nil and err:match("profiler is not running"))
 test:ok(type(errno) == "number")
 
 -- Test profiler output and parse.
-local symbols, events = generate_parsed_output(default_payload)
+local symbols, events = generate_parsed_output(test_payload)
 
 local alloc = fill_ev_type(events, symbols, "alloc")
 local free = fill_ev_type(events, symbols, "free")
@@ -137,9 +147,9 @@ local free = fill_ev_type(events, symbols, "free")
 -- the number of allocations.
 -- 1 event - alocation of table by itself + 1 allocation
 -- of array part as far it is bigger than LJ_MAX_COLOSIZE (16).
-test:ok(check_alloc_report(alloc, 27, 25, 2))
+test:ok(check_alloc_report(alloc, 0, 34, 32, 2))
 -- 100 strings allocations.
-test:ok(check_alloc_report(alloc, 32, 25, 100))
+test:ok(check_alloc_report(alloc, 0, 39, 32, 100))
 
 -- Collect all previous allocated objects.
 test:ok(free.INTERNAL.num == 102)
@@ -147,8 +157,8 @@ test:ok(free.INTERNAL.num == 102)
 -- Tests for leak-only option.
 -- See also https://github.com/tarantool/tarantool/issues/5812.
 local heap_delta = process.form_heap_delta(events, symbols)
-local tab_alloc_stats = heap_delta[form_source_line(27)]
-local str_alloc_stats = heap_delta[form_source_line(32)]
+local tab_alloc_stats = heap_delta[form_source_line(34)]
+local str_alloc_stats = heap_delta[form_source_line(39)]
 test:ok(tab_alloc_stats.nalloc == tab_alloc_stats.nfree)
 test:ok(tab_alloc_stats.dbytes == 0)
 test:ok(str_alloc_stats.nalloc == str_alloc_stats.nfree)
@@ -172,20 +182,30 @@ local co = coroutine.create(f)
 coroutine.resume(co)
 misc.memprof.stop()
 
--- Test profiler with enabled JIT
 jit.on()
-
 -- Test grouping allocations by trace number
-jit.opt.start("-sink", "hotloop=1", 0)
-symbols, events = generate_parsed_output(default_payload)
+jit.opt.start("-sink", "hotloop=1", 3)
+test_payload()
+symbols, events = generate_parsed_output(test_payload)
 
 alloc = fill_ev_type(events, symbols, "alloc")
+assert(alloc ~= nil)
 
 -- We expect, that loops will be compiled into trace.
 -- So, there will be at least 1 allocation in the trace.
-test:ok(check_alloc_report(alloc, 30, 25, 97))
+test:ok(check_alloc_report(alloc, 1, 37, 32, 99))
 
--- Reset optimization options
-jit.opt.start()
+-- Reset optimization options to defaults
+jit.opt.start(unpack(jit_opt_default))
+
+-- Test for marking jit-related allocations as internal.
+-- See also https://github.com/tarantool/tarantool/issues/5679.
+symbols, events = generate_parsed_output(function()
+  for _ = 1, 100 do
+    local _ = {_, _}
+  end
+end)
+alloc = fill_ev_type(events, symbols, "alloc")
+test:ok(alloc[0] == nil)
 
 os.exit(test:check() and 0 or 1)
