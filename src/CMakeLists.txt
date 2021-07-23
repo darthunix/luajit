@@ -60,6 +60,7 @@ make_source_list(SOURCES_UTILS
   SOURCES
     lj_alloc.c
     lj_char.c
+    lj_symtab.c
     lj_utils_leb128.c
     lj_vmmath.c
     lj_wbuf.c
