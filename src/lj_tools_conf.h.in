@@ -1,0 +1,6 @@
+#ifndef LJ_TOOLS_CONF_H
+#define LJ_TOOLS_CONF_H
+
+#define PARSER_PATH "@LUAJIT_TOOLS_DIR@/memprof.lua"
+
+#endif

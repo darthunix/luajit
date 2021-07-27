@@ -19,6 +19,8 @@
 
 #include "lj_arch.h"
 
+#include "lj_tools_conf.h"
+
 #if LJ_TARGET_POSIX
 #include <unistd.h>
 #define lua_stdin_is_tty()	isatty(0)
@@ -72,6 +74,7 @@ static void print_usage(void)
   "  -O[opt]   Control LuaJIT optimizations.\n"
   "  -i        Enter interactive mode after executing " LUA_QL("script") ".\n"
   "  -v        Show version information.\n"
+  "  -t[cmd]   Execute tool.\n"
   "  -E        Ignore environment variables.\n"
   "  --        Stop handling options.\n"
   "  -         Execute stdin and stop handling options.\n", stderr);
@@ -266,21 +269,17 @@ static void dotty(lua_State *L)
   progname = oldprogname;
 }
 
-static int handle_script(lua_State *L, char **argx)
+static int call_script(lua_State *L, const char *fname)
 {
-  int status;
-  const char *fname = argx[0];
-  if (strcmp(fname, "-") == 0 && strcmp(argx[-1], "--") != 0)
-    fname = NULL;  /* stdin */
-  status = luaL_loadfile(L, fname);
+  int status = luaL_loadfile(L, fname);
   if (status == LUA_OK) {
     /* Fetch args from arg table. LUA_INIT or -e might have changed them. */
     int narg = 0;
     lua_getglobal(L, "arg");
     if (lua_istable(L, -1)) {
       do {
-	narg++;
-	lua_rawgeti(L, -narg, narg);
+	      narg++;
+	      lua_rawgeti(L, -narg, narg);
       } while (!lua_isnil(L, -1));
       lua_pop(L, 1);
       lua_remove(L, -narg);
@@ -290,6 +289,16 @@ static int handle_script(lua_State *L, char **argx)
     }
     status = docall(L, narg, 0);
   }
+  return status;
+}
+
+static int handle_script(lua_State *L, char **argx)
+{
+  int status;
+  const char *fname = argx[0];
+  if (strcmp(fname, "-") == 0 && strcmp(argx[-1], "--") != 0)
+    fname = NULL;  /* stdin */
+  status = call_script(L, fname);
   return report(L, status);
 }
 
@@ -361,6 +370,15 @@ static int dojitcmd(lua_State *L, const char *cmd)
   return runcmdopt(L, opt ? opt+1 : opt);
 }
 
+static int dotoolcmd(lua_State *L, const char *cmd)
+{
+  if(strcmp(cmd, "m") == 0) { 
+    const int status = call_script(L, PARSER_PATH);
+    return status == LUA_OK;
+  }
+  return -1;
+}
+
 /* Optimization flags. */
 static int dojitopt(lua_State *L, const char *opt)
 {
@@ -398,6 +416,7 @@ static int dobytecode(lua_State *L, char **argv)
 #define FLAGS_EXEC		4
 #define FLAGS_OPTION		8
 #define FLAGS_NOENV		16
+#define FLAGS_TOOL    32
 
 static int collectargs(char **argv, int *flags)
 {
@@ -419,14 +438,19 @@ static int collectargs(char **argv, int *flags)
       notail(argv[i]);
       *flags |= FLAGS_VERSION;
       break;
+    case 't':
+      *flags |= FLAGS_TOOL;
+      if (argv[i][2] == '\0') return -1;
+      if (argv[i + 1] == NULL) return -1;
+      return i + 1;
     case 'e':
       *flags |= FLAGS_EXEC;
     case 'j':  /* LuaJIT extension */
     case 'l':
       *flags |= FLAGS_OPTION;
       if (argv[i][2] == '\0') {
-	i++;
-	if (argv[i] == NULL) return -1;
+	      i++;
+        if (argv[i] == NULL) return -1;
       }
       break;
     case 'O': break;  /* LuaJIT extension */
@@ -474,6 +498,9 @@ static int runargs(lua_State *L, char **argv, int argn)
 	return 1;
       break;
       }
+    case 't' :
+      const char *cmd = argv[i] + 2;
+      return dotoolcmd(L, cmd) == LUA_OK;
     case 'O':  /* LuaJIT extension. */
       if (dojitopt(L, argv[i] + 2))
 	return 1;
@@ -535,7 +562,7 @@ static int pmain(lua_State *L)
   luaL_openlibs(L);
   lua_gc(L, LUA_GCRESTART, -1);
 
-  createargtable(L, argv, s->argc, argn);
+  createargtable(L, argv, s->argc, (flags & FLAGS_TOOL) ? argn - 1 : argn);
 
   if (!(flags & FLAGS_NOENV)) {
     s->status = handle_luainit(L);

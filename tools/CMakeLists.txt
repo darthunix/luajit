@@ -16,6 +16,7 @@ else()
   # path where LuaJIT binary is located.
   set(LUAJIT_TOOLS_BIN ${LUAJIT_BINARY_DIR}/${LUAJIT_CLI_NAME})
   set(LUAJIT_TOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+  set(LUAJIT_TOOLS_DIR ${LUAJIT_TOOLS_DIR} PARENT_SCOPE)
   # XXX: Unfortunately, there is no convenient way to set
   # particular permissions to the output file via CMake.
   # Furthermore, I even failed to copy the given file to the same
@@ -75,6 +76,7 @@ else()
     "
       set(LUAJIT_TOOLS_BIN ${CMAKE_INSTALL_PREFIX}/bin/${LUAJIT_CLI_NAME})
       set(LUAJIT_TOOLS_DIR ${CMAKE_INSTALL_PREFIX}/${LUAJIT_DATAROOTDIR})
+      set(LUAJIT_TOOLS_DIR ${LUAJIT_TOOLS_DIR} PARENT_SCOPE)
       configure_file(${CMAKE_CURRENT_SOURCE_DIR}/luajit-parse-memprof.in
         ${PROJECT_BINARY_DIR}/luajit-parse-memprof @ONLY ESCAPE_QUOTES)
       file(INSTALL ${PROJECT_BINARY_DIR}/luajit-parse-memprof

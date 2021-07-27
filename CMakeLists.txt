@@ -250,6 +250,11 @@ endif()
 # related compiler and linker flags passed. This should be done
 # the right way later.
 
+# --- Tools --------------------------------------------------------------------
+
+add_subdirectory(tools)
+set(LUAJIT_TOOLS_DIR "${LUAJIT_TOOLS_DIR}")
+
 # --- Main source tree ---------------------------------------------------------
 
 add_subdirectory(src)
@@ -257,10 +262,6 @@ add_subdirectory(src)
 # --- Auxiliary files ----------------------------------------------------------
 
 add_subdirectory(etc)
-
-# --- Tools --------------------------------------------------------------------
-
-add_subdirectory(tools)
 
 # --- Testing source tree ------------------------------------------------------
 

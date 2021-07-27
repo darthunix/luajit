@@ -142,6 +142,8 @@ make_source_list(SOURCES_CORE_NO_JIT_FFI
     ${SOURCES_UTILS}
 )
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/lj_tools_conf.h.in ${CMAKE_CURRENT_SOURCE_DIR}/lj_tools_conf.h)
+
 set(SOURCES_CORE ${SOURCES_CORE_NO_JIT_FFI})
 
 # Build JIT sources if JIT support is enabled.
@@ -247,6 +249,9 @@ add_custom_target(
   DEPENDS lj_bcdef.h lj_ffdef.h lj_libdef.h lj_recdef.h lj_folddef.h
           jit/vmdef.lua
 )
+
+# --- Generate luajit tools config header -------------------------------------
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/lj_tools_conf.h.in ${CMAKE_CURRENT_SOURCE_DIR}/lj_tools_conf.h)
 
 # --- Generate core and VM object files ---------------------------------------
 
