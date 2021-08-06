@@ -35,14 +35,14 @@ Save LuaJIT bytecode: luajit -b[options] input output
 
 File types: c h obj o raw (default)
 ]]
-  os.exit(1)
+  error({code = 1})
 end
 
 local function check(ok, ...)
   if ok then return ok, ... end
   io.stderr:write("luajit: ", ...)
   io.stderr:write("\n")
-  os.exit(1)
+  error({code = 1})
 end
 
 local function readfile(input)

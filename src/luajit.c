@@ -386,7 +386,8 @@ static int dobytecode(lua_State *L, char **argv)
   }
   for (argv++; *argv != NULL; narg++, argv++)
     lua_pushstring(L, *argv);
-  report(L, lua_pcall(L, narg, 0, 0));
+  int status = report(L, lua_pcall(L, narg, 0, 0));
+  if (status != 0) return LUA_ERRERR;
   return -1;
 }
 
@@ -545,6 +546,7 @@ static int pmain(lua_State *L)
   if ((flags & FLAGS_VERSION)) print_version();
 
   s->status = runargs(L, argv, argn);
+  if (s->status == LUA_ERRERR) return 1;
   if (s->status != LUA_OK) return 0;
 
   if (s->argc > argn) {
