@@ -8,6 +8,7 @@ jit.flush()
 
 local bufread = require "utils.bufread"
 local symtab = require "utils.symtab"
+local sysprof = require "sysprof.parse"
 
 local TMP_BINFILE = arg[0]:gsub(".+/([^/]+)%.test%.lua$", "%.%1.sysprofdata.tmp.bin")
 local BAD_PATH = arg[0]:gsub(".+/([^/]+)%.test%.lua$", "%1/sysprofdata.tmp.bin")
@@ -98,6 +99,7 @@ end
 
 local reader = bufread.new(TMP_BINFILE)
 symtab.parse(reader)
+sysprof.parse(reader)
 
 os.remove(TMP_BINFILE)
 
