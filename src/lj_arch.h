@@ -220,6 +220,7 @@
 #endif
 
 #define LJ_ARCH_NOMEMPROF	1
+#define LJ_ARCH_NOSYSPROF	1
 
 #elif LUAJIT_TARGET == LUAJIT_ARCH_ARM64
 
@@ -243,6 +244,7 @@
 #define LJ_ARCH_VERSION		80
 
 #define LJ_ARCH_NOMEMPROF	1
+#define LJ_ARCH_NOSYSPROF	1
 
 #elif LUAJIT_TARGET == LUAJIT_ARCH_PPC
 
@@ -310,6 +312,7 @@
 #endif
 
 #define LJ_ARCH_NOMEMPROF	1
+#define LJ_ARCH_NOSYSPROF	1
 
 #elif LUAJIT_TARGET == LUAJIT_ARCH_MIPS32 || LUAJIT_TARGET == LUAJIT_ARCH_MIPS64
 
@@ -371,6 +374,7 @@
 #endif
 
 #define LJ_ARCH_NOMEMPROF	1
+#define LJ_ARCH_NOSYSPROF	1
 
 #else
 #error "No target architecture defined"
@@ -588,6 +592,13 @@
 #else
 #define LJ_HASRESOLVER		0
 #endif
+#endif
+
+/* Disable or enable the platform and Lua profiler. */
+#if defined(LUAJIT_DISABLE_SYSPROF) || defined(LJ_ARCH_NOSYSPROF) || LJ_TARGET_WINDOWS || LJ_TARGET_CYGWIN || LJ_TARGET_OSX || LJ_TARGET_PS3 || LJ_TARGET_PS4 || LJ_TARGET_XBOX360
+#define LJ_HASSYSPROF		0
+#else
+#define LJ_HASSYSPROF		1
 #endif
 
 #endif
