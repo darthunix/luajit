@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# Launcher for sysprof parser.
+
+LUA_PATH="/home/shishqa/luajit/tools/?.lua;;" \
+  /home/shishqa/luajit/src/luajit /home/shishqa/luajit/tools/sysprof.lua $@

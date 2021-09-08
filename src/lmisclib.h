@@ -60,6 +60,99 @@ struct luam_Metrics {
 
 LUAMISC_API void luaM_metrics(lua_State *L, struct luam_Metrics *metrics);
 
+/* --- Sysprof - platform and lua profiler -------------------------------- */
+
+/* Profiler configurations */
+struct luam_sysprof_config {
+  /*
+  ** Writer function for profile events.
+  ** Should return amount of written bytes on success or zero in case of error.
+  ** Setting *data to NULL means end of profiling.
+  ** For details see <lj_wbuf.h>.
+  */
+  size_t (*writer)(const void **data, size_t len, void *ctx);
+  /*
+  ** Callback on profiler stopping. Required for correctly cleaning
+  ** at VM finalization when profiler is still running.
+  ** Returns zero on success.
+  */
+  int (*on_stop)(void *ctx, uint8_t *buf);
+  /*
+  ** Backtracing function for the host stack. Should call `frame_writer` on
+  ** each frame in the stack in the order from the stack top to the stack
+  ** bottom. The `frame_writer` function is implemented inside the sysprof
+  ** and will be passed to the `backtracer` function. If `frame_writer` returns
+  ** NULL, backtracing should be stopped. If `frame_writer` returns not NULL,
+  ** the backtracing should be continued if there are frames left.
+  */
+  void (*backtracer)(void *(*frame_writer)(int frame_no, void *addr));
+};
+
+enum luam_sysprof_mode {
+  /*
+  ** DEFAULT mode collects only data for luam_sysprof_counters, which is stored
+  ** in memory and can be collected with luaM_sysprof_report after profiler
+  ** stops.
+  */
+  LUAM_SYSPROF_DEFAULT,
+  /*
+  ** LEAF mode = DEFAULT + streams samples with only top frames of host and
+  ** guests stacks in format described in <lj_sysprof.h>
+  */
+  LUAM_SYSPROF_LEAF,
+  /*
+  ** CALLGRAPH mode = DEFAULT + streams samples with full callchains of host
+  ** and guest stacks in format described in <lj_sysprof.h>
+  */
+  LUAM_SYSPROF_CALLGRAPH
+};
+
+struct luam_sysprof_counters {
+  uint64_t vmst_interp;
+  uint64_t vmst_lfunc;
+  uint64_t vmst_ffunc;
+  uint64_t vmst_cfunc;
+  uint64_t vmst_gc;
+  uint64_t vmst_exit;
+  uint64_t vmst_record;
+  uint64_t vmst_opt;
+  uint64_t vmst_asm;
+  uint64_t vmst_trace;
+  /* XXX: order of vmst counters is important */
+  uint64_t samples;
+  uint64_t overruns;
+};
+
+/* Profiler options */
+struct luam_sysprof_options {
+  /* Profiling mode */
+  enum luam_sysprof_mode mode;
+  /* Sampling interval in msec */
+  uint64_t interval;
+  /* Custom buffer to write data. */
+  uint8_t *buf;
+  /* The buffer's size. */
+  size_t len;
+  /* Context for the profile writer and final callback. */
+  void *ctx;
+};
+
+#define SYSPROF_SUCCESS (0)
+#define SYSPROF_ERRUSE  (1)
+#define SYSPROF_ERRRUN  (2)
+#define SYSPROF_ERRSTOP (3)
+#define SYSPROF_ERRIO   (4)
+
+LUAMISC_API int luaM_sysprof_configure(const struct luam_sysprof_config *config);
+
+LUAMISC_API int luaM_sysprof_start(lua_State *L,
+                                   const struct luam_sysprof_options *opt);
+
+LUAMISC_API int luaM_sysprof_stop(lua_State *L);
+
+LUAMISC_API int luaM_sysprof_report(struct luam_sysprof_counters *counters);
+
+
 #define LUAM_MISCLIBNAME "misc"
 LUALIB_API int luaopen_misc(lua_State *L);
 

@@ -119,6 +119,8 @@ AppendFlags(TARGET_C_FLAGS
   -D_FILE_OFFSET_BITS=64
   -D_LARGEFILE_SOURCE
   -U_FORTIFY_SOURCE
+  -D__USE_GNU
+  -D_GNU_SOURCE
 )
 
 # Permanently disable the FFI extension to reduce the size of the
@@ -182,6 +184,12 @@ endif()
 option(LUAJIT_DISABLE_MEMPROF "LuaJIT memory profiler support" OFF)
 if(LUAJIT_DISABLE_MEMPROF)
   AppendFlags(TARGET_C_FLAGS -DLUAJIT_DISABLE_MEMPROF)
+endif()
+
+# Disable platform and lua profiler.
+option(LUAJIT_DISABLE_SYSPROF "LuaJIT platform and lua profiler support" OFF)
+if(LUAJIT_DISABLE_SYSPROF)
+  AppendFlags(TARGET_C_FLAGS -DLUAJIT_DISABLE_SYSPROF)
 endif()
 
 # Switch to harder (and slower) hash function when a collision
