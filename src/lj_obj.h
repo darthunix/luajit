@@ -514,6 +514,17 @@ typedef struct GCtab {
 #define setfreetop(t, n, v)	(setmref((n)->freetop, (v)))
 #endif
 
+/* -- Misc objects -------------------------------------------------------- */
+
+struct lj_sysprof_topframe {
+  uint8_t ffid;          /* FFUNC: fast function id. */
+  union {
+    uint64_t raw;        /* Raw value for context save/restore. */
+    TValue *interp_base; /* LFUNC: Base of the executed coroutine. */
+    lua_CFunction cf;    /* CFUNC: Address of the C function. */
+  } guesttop;
+};
+
 /* -- State objects ------------------------------------------------------- */
 
 /* VM states. */
@@ -674,6 +685,7 @@ typedef struct global_State {
   MRef jit_base;	/* Current JIT code L->base or NULL. */
   MRef ctype_state;	/* Pointer to C type state. */
   GCRef gcroot[GCROOT_MAX];  /* GC roots. */
+  struct lj_sysprof_topframe top_frame;  /* Top frame for sysprof */
 } global_State;
 
 #define mainthread(g)	(&gcref(g->mainthref)->th)
