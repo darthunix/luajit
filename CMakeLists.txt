@@ -11,6 +11,8 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 project(LuaJIT C)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # XXX: Originally CMake machinery is introduced to make LuaJIT
 # testing self-sufficient. Since there are only few systems
 # covered by the tests in our CI, there is no need to support
@@ -94,7 +96,7 @@ endif()
 # tracebacks and unwinding are not affected -- the assembler part
 # has frame unwind information and GCC emits it where needed (x64)
 # or with -g.
-AppendFlags(CMAKE_C_FLAGS -fomit-frame-pointer -fno-stack-protector)
+# AppendFlags(CMAKE_C_FLAGS -fomit-frame-pointer -fno-stack-protector)
 
 # Redefined to benefit from expanding macros in gdb.
 set(CMAKE_C_FLAGS_DEBUG "-g -ggdb3")
@@ -119,7 +121,6 @@ AppendFlags(TARGET_C_FLAGS
   -D_FILE_OFFSET_BITS=64
   -D_LARGEFILE_SOURCE
   -U_FORTIFY_SOURCE
-  -D__USE_GNU
   -D_GNU_SOURCE
 )
 

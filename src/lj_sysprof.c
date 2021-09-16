@@ -54,6 +54,7 @@ struct sysprof {
   int saved_errno; /* Saved errno when profiler failed. */
 
   void *base;
+  void *kbase;
 };
 
 static struct sysprof sysprof = {0};
@@ -79,10 +80,16 @@ static void stream_epilogue(struct sysprof *sp)
   lj_wbuf_addbyte(&sp->out, LJP_EPILOGUE_BYTE);
 }
 
+#include <stdio.h>
+
 static void stream_lfunc(struct lj_wbuf *buf, GCfunc *func)
 {
   GCproto *pt = funcproto(func);
   lua_assert(pt != NULL);
+
+  fprintf(stderr, "\t\t - name = %s\n", proto_chunknamestr(pt));
+  fprintf(stderr, "\t\t - line = %d\n", pt->firstline);
+
   lj_wbuf_addbyte(buf, LJP_FRAME_LFUNC);
   lj_wbuf_addu64(buf, (uintptr_t)pt);
   lj_wbuf_addu64(buf, (uint64_t)pt->firstline);
@@ -113,6 +120,7 @@ static void stream_frame_lua(struct lj_wbuf *buf, cTValue *frame)
   }
 }
 
+
 static void stream_backtrace_lua(struct sysprof *sp)
 {
   global_State *g = sp->g;
@@ -124,10 +132,18 @@ static void stream_backtrace_lua(struct sysprof *sp)
   L = gco2th(gcref(g->cur_L));
   lua_assert(L != NULL);
 
-  top_frame = ((cTValue *)sp->base) - 1;
+  fprintf(stderr, "backtrace lua:\n");
+  fprintf(stderr, "\tBASE=%p, L->base=%p\n", sp->base, L->base);
+
+  top_frame = (g->vmstate == ~LJ_VMST_LFUNC ? (cTValue *)sp->base : L->base) - 1;
+  // top_frame = L->base - 1;
+  fprintf(stderr, "\tTOP_FRAME=%p\n", top_frame);
+
   bot = tvref(L->stack) + LJ_FR2;
   /* Traverse frames backwards */
   for (frame = top_frame; frame > bot; frame = frame_prev(frame)) {
+    fprintf(stderr, "\tframe %p\n", frame);
+
     if (frame_gc(frame) == obj2gco(L)) {
       continue;  /* Skip dummy frames. See lj_err_optype_call(). */
     }
@@ -160,7 +176,16 @@ static void default_backtrace_host(void *(writer)(int frame_no, void *addr))
 {
   static void* backtrace_buf[SYSPROF_BACKTRACE_BUF_SIZE] = {};
 
+  fprintf(stderr, "BACKTRACE HOST\n");
   struct sysprof *sp = &sysprof;
+  for (size_t dep = 1; dep < (sp->opt.mode == LUAM_SYSPROF_LEAF ? SYSPROF_HANDLER_STACK_DEPTH + 1 : SYSPROF_BACKTRACE_BUF_SIZE); ++dep) {
+    const int depth = backtrace(backtrace_buf, dep);
+    fprintf(stderr, "\t- depth %d(%lu) - %p\n", depth, dep, backtrace_buf[dep - 1]);
+    if ((size_t)depth < dep) {
+      break;
+    }
+  }
+
   const int depth = backtrace(backtrace_buf,
                               sp->opt.mode == LUAM_SYSPROF_LEAF
                               ? SYSPROF_HANDLER_STACK_DEPTH + 1
@@ -245,6 +270,7 @@ static void sysprof_record_sample(struct sysprof *sp, siginfo_t *info, void *ctx
 
   ucontext_t *context = (ucontext_t *)ctx;
   sp->base = context->uc_mcontext.gregs[REG_RDX];
+  sp->kbase = context->uc_mcontext.gregs[REG_RDI];
 
   /* Caveat: order of counters must match vmstate order in <lj_obj.h>. */
   ((uint64_t *)&sp->counters)[vmstate]++;

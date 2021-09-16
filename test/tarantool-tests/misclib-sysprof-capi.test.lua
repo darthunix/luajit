@@ -22,7 +22,7 @@ local function lua_payload(n)
 end
 
 local function payload()
-  local n_iterations = 500000
+  local n_iterations = 5000000
 
   local co = coroutine.create(function ()
     for i = 1, n_iterations do
@@ -35,7 +35,7 @@ local function payload()
     end
   end)
 
-  for _ = 1, n_iterations do
+  for _=1,n_iterations do
     coroutine.resume(co)
   end
 end
