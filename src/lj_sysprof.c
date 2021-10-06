@@ -121,8 +121,8 @@ static void stream_backtrace_lua(struct sysprof *sp)
   L = gco2th(gcref(g->cur_L));
   lua_assert(L != NULL);
 
-  top_frame = sp->g->top_frame.guesttop.interp_base - 1;
-  bot = tvref(L->stack) + LJ_FR2;
+  top_frame = g->top_frame.guesttop.interp_base - (1 + LJ_FR2);
+  bot = tvref(L->stack);
   /* Traverse frames backwards */
   for (frame = top_frame; frame > bot; frame = frame_prev(frame)) {
     if (frame_gc(frame) == obj2gco(L)) {

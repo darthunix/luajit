@@ -1,3 +1,9 @@
+-- Memprof is implemented for x86 and x64 architectures only.
+require("utils").skipcond(
+  jit.arch ~= "x86" and jit.arch ~= "x64",
+  jit.arch.." architecture is NIY for memprof"
+)
+
 local tap = require("tap")
 
 local test = tap.test("misc-sysprof-lapi")

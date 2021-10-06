@@ -10,7 +10,6 @@
 #undef NDEBUG
 #include <assert.h>
 
-
 /* --- utils -------------------------------------------------------------- */
 
 #define SYSPROF_INTERVAL_DEFAULT 11
@@ -112,6 +111,7 @@ static double fib(double n)
 static int c_payload(lua_State *L)
 {
   fib(luaL_checknumber(L, 1));
+  return 0;
 }
 
 /* --- sysprof C API tests ------------------------------------------------ */
