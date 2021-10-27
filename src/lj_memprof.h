@@ -72,13 +72,6 @@
 
 #define LJM_EPILOGUE_HEADER 0x80
 
-/* Profiler public API. */
-#define PROFILE_SUCCESS 0
-#define PROFILE_ERRUSE  1
-#define PROFILE_ERRRUN  2
-#define PROFILE_ERRMEM  3
-#define PROFILE_ERRIO   4
-
 /* Profiler options. */
 struct lj_memprof_options {
   /* Context for the profile writer and final callback. */

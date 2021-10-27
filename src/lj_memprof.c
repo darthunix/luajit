@@ -12,6 +12,7 @@
 
 #include "lj_arch.h"
 #include "lj_memprof.h"
+#include "lmisclib.h"
 
 #if LJ_HASMEMPROF
 

@@ -60,6 +60,14 @@ struct luam_Metrics {
 
 LUAMISC_API void luaM_metrics(lua_State *L, struct luam_Metrics *metrics);
 
+/* API for controlling profilers. */
+
+#define PROFILE_SUCCESS 0
+#define PROFILE_ERRUSE  1
+#define PROFILE_ERRRUN  2
+#define PROFILE_ERRMEM  3
+#define PROFILE_ERRIO   4
+
 #define LUAM_MISCLIBNAME "misc"
 LUALIB_API int luaopen_misc(lua_State *L);
 
