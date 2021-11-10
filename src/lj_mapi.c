@@ -18,6 +18,8 @@
 #include "lj_jit.h"
 #endif
 
+#include "lj_sysprof.h"
+
 LUAMISC_API void luaM_metrics(lua_State *L, struct luam_Metrics *metrics)
 {
   global_State *g = G(L);
@@ -62,4 +64,26 @@ LUAMISC_API void luaM_metrics(lua_State *L, struct luam_Metrics *metrics)
   metrics->jit_mcode_size = 0;
   metrics->jit_trace_num = 0;
 #endif
+}
+
+/* --- Platform and Lua profiler ------------------------------------------ */
+
+LUAMISC_API int luaM_sysprof_init(const struct luam_Sysprof_Config *config)
+{
+  return lj_sysprof_init(config);
+}
+
+LUAMISC_API int luaM_sysprof_start(lua_State *L, void *ctx)
+{
+  return lj_sysprof_start(L, ctx);
+}
+
+LUAMISC_API int luaM_sysprof_stop(lua_State *L)
+{
+  return lj_sysprof_stop(L);
+}
+
+LUAMISC_API int luaM_sysprof_report(struct luam_Sysprof_Counters *counters)
+{
+  return lj_sysprof_report(counters);
 }

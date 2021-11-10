@@ -62,6 +62,7 @@ add_subdirectory(gh-6189-cur_L)
 add_subdirectory(lj-49-bad-lightuserdata)
 add_subdirectory(lj-flush-on-trace)
 add_subdirectory(misclib-getmetrics-capi)
+add_subdirectory(misclib-sysprof-capi)
 
 # The part of the memory profiler toolchain is located in tools
 # directory, jit, profiler, and bytecode toolchains are located
