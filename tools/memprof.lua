@@ -101,6 +101,11 @@ local function dump(inputfile)
   local reader = bufread.new(inputfile)
   local symbols = symtab.parse(reader)
   local events = memprof.parse(reader, symbols)
+
+  for addr, event in pairs(events.symtab) do
+    symtab.add_cfunc(symbols, addr, event.name)
+  end
+
   if not leak_only then
     view.profile_info(events, symbols)
   end

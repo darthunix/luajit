@@ -11,10 +11,11 @@ local lshift = bit.lshift
 local string_format = string.format
 
 local LJM_MAGIC = "ljm"
-local LJM_CURRENT_VERSION = 1
+local LJM_CURRENT_VERSION = 2
 
 local LJM_EPILOGUE_HEADER = 0x80
 
+local AEVENT_SYMTAB = 0
 local AEVENT_ALLOC = 1
 local AEVENT_FREE = 2
 local AEVENT_REALLOC = 3
@@ -36,6 +37,7 @@ local function new_event(loc)
     free = 0,
     alloc = 0,
     primary = {},
+    name = nil
   }
 end
 
@@ -75,6 +77,17 @@ local function parse_location(reader, asource)
     return id_location(reader:read_uleb128(), reader:read_uleb128())
   end
   error("Unknown asource "..asource)
+end
+
+local function parse_symtab(reader, asource, events, heap)
+  local id = reader:read_uleb128()
+  local name = reader:read_string()
+
+  if not events[id] then
+    events[id] = new_event(0)
+  end
+
+  events[id].name = name
 end
 
 local function parse_alloc(reader, asource, events, heap)
@@ -134,6 +147,7 @@ local function parse_free(reader, asource, events, heap)
 end
 
 local parsers = {
+  [AEVENT_SYMTAB] = {evname = "symtab", parse = parse_symtab},
   [AEVENT_ALLOC] = {evname = "alloc", parse = parse_alloc},
   [AEVENT_FREE] = {evname = "free", parse = parse_free},
   [AEVENT_REALLOC] = {evname = "realloc", parse = parse_realloc},
@@ -174,6 +188,7 @@ function M.parse(reader)
     realloc = {},
     free = {},
     heap = {},
+    symtab = {}
   }
 
   local magic = reader:read_octets(3)

@@ -61,10 +61,10 @@ local function fill_ev_type(events, symbols, event_type)
         name = "INTERNAL",
         num = event.num,
     }
-    elseif symbols[addr] then
+    elseif symbols.SYMTAB_LFUNC[addr] then
       ev_type[event.loc.line] = {
         name = string.format(
-          "%s:%d", symbols[addr].source, symbols[addr].linedefined
+          "%s:%d", symbols.SYMTAB_LFUNC[addr].source, symbols.SYMTAB_LFUNC[addr].linedefined
         ),
         num = event.num,
       }
