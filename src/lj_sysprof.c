@@ -89,19 +89,8 @@ static void stream_lfunc(struct lj_wbuf *buf, GCfunc *func)
   lj_wbuf_addu64(buf, (uint64_t)pt->firstline);
 }
 
-static void stream_cfunc(struct lj_wbuf *buf, GCfunc *func, uint32_t *lib_cnt)
+static void stream_cfunc(struct lj_wbuf *buf, GCfunc *func)
 {
-  /* Check if there are any new libs. */
-  struct symbol_resolver_conf conf = {
-    buf,
-    LJP_FRAME_SYMTAB | LJP_FRAME_CFUNC,
-    0,
-    *lib_cnt,
-    0,
-    lib_cnt
-  };
-  dl_iterate_phdr(resolve_symbolnames, &conf);
-
 
   lj_wbuf_addbyte(buf, LJP_FRAME_CFUNC);
   lj_wbuf_addu64(buf, (uintptr_t)func->c.f);
@@ -113,7 +102,7 @@ static void stream_ffunc(struct lj_wbuf *buf, GCfunc *func)
   lj_wbuf_addu64(buf, func->c.ffid);
 }
 
-static void stream_frame_lua(struct lj_wbuf *buf, cTValue *frame, uint32_t *lib_cnt)
+static void stream_frame_lua(struct lj_wbuf *buf, cTValue *frame)
 {
   GCfunc *func = frame_func(frame);
   lua_assert(NULL != func);
@@ -122,7 +111,7 @@ static void stream_frame_lua(struct lj_wbuf *buf, cTValue *frame, uint32_t *lib_
   } else if (isffunc(func)) {
     stream_ffunc(buf, func);
   } else {
-    stream_cfunc(buf, func, lib_cnt);
+    stream_cfunc(buf, func);
   }
 }
 
@@ -144,7 +133,7 @@ static void stream_backtrace_lua(struct sysprof *sp)
     if (frame_gc(frame) == obj2gco(L)) {
       continue;  /* Skip dummy frames. See lj_err_optype_call(). */
     }
-    stream_frame_lua(buf, frame, &sp->lib_cnt);
+    stream_frame_lua(buf, frame);
   }
 
   lj_wbuf_addbyte(buf, LJP_FRAME_LUA_LAST);
@@ -235,6 +224,17 @@ static event_streamer event_streamers[] = {
 
 static void stream_event(struct sysprof *sp, uint32_t vmstate)
 {
+  /* Check if there are any new libs. */
+  struct symbol_resolver_conf conf = {
+    &sp->out,
+    LJP_STATE_SYMTAB,
+    0,
+    sp->lib_cnt,
+    0,
+    &sp->lib_cnt
+  };
+  dl_iterate_phdr(resolve_symbolnames, &conf);
+
   event_streamer stream = NULL;
 
   /* Check that vmstate fits in 4 bits (see streaming format) */

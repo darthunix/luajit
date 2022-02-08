@@ -83,6 +83,8 @@
 
 #define LJP_EPILOGUE_BYTE 0x80
 
+#define LJP_STATE_SYMTAB ((uint8_t)10)
+
 int lj_sysprof_configure(const struct luam_sysprof_config *config);
 
 int lj_sysprof_start(lua_State *L, const struct luam_sysprof_options *opt);
