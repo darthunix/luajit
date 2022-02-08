@@ -74,6 +74,7 @@
 ** frame-host-last = NULL
 */
 
+#define LJP_FRAME_SYMTAB ((uint8_t)0)
 #define LJP_FRAME_LFUNC ((uint8_t)1)
 #define LJP_FRAME_CFUNC ((uint8_t)2)
 #define LJP_FRAME_FFUNC ((uint8_t)3)

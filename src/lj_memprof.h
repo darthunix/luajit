@@ -17,7 +17,7 @@
 #include "lj_wbuf.h"
 
 
-#define LJM_CURRENT_FORMAT_VERSION 0x01
+#define LJM_CURRENT_FORMAT_VERSION 0x02
 
 /*
 ** Event stream format:
@@ -61,6 +61,7 @@
 */
 
 /* Allocation events. */
+#define AEVENT_SYMTAB  ((uint8_t)0)
 #define AEVENT_ALLOC   ((uint8_t)1)
 #define AEVENT_FREE    ((uint8_t)2)
 #define AEVENT_REALLOC ((uint8_t)(AEVENT_ALLOC | AEVENT_FREE))

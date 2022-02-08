@@ -5,6 +5,9 @@
 ** Copyright (C) 2015-2019 IPONWEB Ltd.
 */
 
+#define _GNU_SOURCE
+#include <link.h>
+
 #define lj_memprof_c
 #define LUA_CORE
 
@@ -45,6 +48,7 @@ struct memprof {
   struct alloc orig_alloc; /* Original allocator. */
   struct lj_memprof_options opt; /* Profiling options. */
   int saved_errno; /* Saved errno when profiler deinstrumented. */
+  uint32_t lib_cnt;
 };
 
 static struct memprof memprof = {0};
@@ -72,15 +76,24 @@ static void memprof_write_lfunc(struct lj_wbuf *out, uint8_t aevent,
 }
 
 static void memprof_write_cfunc(struct lj_wbuf *out, uint8_t aevent,
-				const GCfunc *fn)
+				const GCfunc *fn, uint32_t *lib_cnt)
 {
+  struct symbol_resolver_conf conf = {
+    out,
+    AEVENT_SYMTAB | ASOURCE_CFUNC,
+    0,
+    *lib_cnt,
+    0,
+    lib_cnt
+  };
+  dl_iterate_phdr(resolve_symbolnames, &conf);
   lj_wbuf_addbyte(out, aevent | ASOURCE_CFUNC);
   lj_wbuf_addu64(out, (uintptr_t)fn->c.f);
 }
 
 static void memprof_write_ffunc(struct lj_wbuf *out, uint8_t aevent,
 				GCfunc *fn, struct lua_State *L,
-				cTValue *frame)
+				cTValue *frame, uint32_t *lib_cnt)
 {
   cTValue *pframe = frame_prev(frame);
   GCfunc *pfn = frame_func(pframe);
@@ -93,7 +106,7 @@ static void memprof_write_ffunc(struct lj_wbuf *out, uint8_t aevent,
   if (pfn != NULL && isluafunc(pfn))
     memprof_write_lfunc(out, aevent, pfn, L, frame);
   else
-    memprof_write_cfunc(out, aevent, fn);
+    memprof_write_cfunc(out, aevent, fn, lib_cnt);
 }
 
 static void memprof_write_func(struct memprof *mp, uint8_t aevent)
@@ -106,9 +119,9 @@ static void memprof_write_func(struct memprof *mp, uint8_t aevent)
   if (isluafunc(fn))
     memprof_write_lfunc(out, aevent, fn, L, NULL);
   else if (isffunc(fn))
-    memprof_write_ffunc(out, aevent, fn, L, frame);
+    memprof_write_ffunc(out, aevent, fn, L, frame, &mp->lib_cnt);
   else if (iscfunc(fn))
-    memprof_write_cfunc(out, aevent, fn);
+    memprof_write_cfunc(out, aevent, fn, &mp->lib_cnt);
   else
     lua_assert(0);
 }
@@ -216,7 +229,7 @@ int lj_memprof_start(struct lua_State *L, const struct lj_memprof_options *opt)
 
   /* Init output. */
   lj_wbuf_init(&mp->out, mp_opt->writer, mp_opt->ctx, mp_opt->buf, mp_opt->len);
-  lj_symtab_dump(&mp->out, mp->g);
+  lj_symtab_dump(&mp->out, mp->g, &mp->lib_cnt);
 
   /* Write prologue. */
   lj_wbuf_addn(&mp->out, ljm_header, ljm_header_len);
