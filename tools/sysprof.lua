@@ -103,6 +103,9 @@ local function dump(inputfile)
   local symbols = symtab.parse(reader)
 
   local events = sysprof.parse(reader)
+  for addr, event in pairs(events.symtab) do
+    symtab.add_cfunc(symbols, addr, event.name)
+  end
   local calltree = misc.collapse(events, symbols, split_by_vmstate)
 
   traverse_calltree(calltree, '')
