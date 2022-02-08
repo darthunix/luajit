@@ -86,7 +86,7 @@ local function parseargs(args)
 end
 
 local function traverse_calltree(node, prefix)
-  if node.is_leaf then
+  if node.is_leaf and prefix ~= '' then
     print(prefix..' '..node.count)
   end
 
@@ -103,8 +103,10 @@ local function dump(inputfile)
   local symbols = symtab.parse(reader)
 
   local events = sysprof.parse(reader)
-  for addr, event in pairs(events.symtab) do
-    symtab.add_cfunc(symbols, addr, event.name)
+  for _, event in ipairs(events) do
+    if event.symtab ~= nil then
+      symtab.add_cfunc(symbols, event.symtab.addr, event.symtab.name)
+    end
   end
   local calltree = misc.collapse(events, symbols, split_by_vmstate)
 

@@ -19,6 +19,7 @@ M.VMST = {
   OPT    = 7,
   ASM    = 8,
   TRACE  = 9,
+  SYMTAB = 10,
 }
 
 
@@ -44,7 +45,8 @@ local function new_event()
     },
     host = {
       callchain = {}
-    }
+    },
+    symtab = nil
   }
 end
 
@@ -127,6 +129,16 @@ local function parse_trace(reader, event)
   -- parse_lua_callchain(reader, event)
 end
 
+local function parse_symtab(reader, event)
+  local addr = reader:read_uleb128()
+  local name = reader:read_string()
+
+  event.symtab = {
+    name = name,
+    addr = addr,
+  }
+end
+
 local event_parsers = {
   [M.VMST.INTERP] = parse_host_only,
   [M.VMST.LFUNC]  = parse_lua_host,
@@ -137,7 +149,8 @@ local event_parsers = {
   [M.VMST.RECORD] = parse_host_only,
   [M.VMST.OPT]    = parse_host_only,
   [M.VMST.ASM]    = parse_host_only,
-  [M.VMST.TRACE]  = parse_trace
+  [M.VMST.TRACE]  = parse_trace,
+  [M.VMST.SYMTAB] = parse_symtab,
 }
 
 local function parse_event(reader, events)
@@ -149,7 +162,7 @@ local function parse_event(reader, events)
     return false
   end
 
-  assert(0 <= vmstate and vmstate <= 9, "Vmstate "..vmstate.." is not valid")
+  assert(0 <= vmstate and vmstate <= 10, "Vmstate "..vmstate.." is not valid")
   event.lua.vmstate = vmstate
 
   event_parsers[vmstate](reader, event)
