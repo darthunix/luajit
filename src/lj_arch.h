@@ -583,6 +583,11 @@
 #define LJ_HASMEMPROF		0
 #else
 #define LJ_HASMEMPROF		1
+#if LJ_TARGET_LINUX
+#define LJ_HASRESOLVER		1
+#else
+#define LJ_HASRESOLVER		0
+#endif
 #endif
 
 #endif
