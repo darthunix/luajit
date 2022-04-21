@@ -84,6 +84,7 @@ struct sysprof {
   struct luam_Sysprof_Config config; /* Profiler configurations. */
   lj_profile_timer timer; /* Profiling timer. */
   int saved_errno; /* Saved errno when profiler failed. */
+  uint32_t lib_adds; /* Number of libs loaded. Monotonic. */
 };
 /*
 ** XXX: Only one VM can be profiled at a time.
@@ -103,7 +104,7 @@ static int stream_is_needed(struct sysprof *sp)
 
 static void stream_prologue(struct sysprof *sp)
 {
-  lj_symtab_dump(&sp->out, sp->g);
+  lj_symtab_dump(&sp->out, sp->g, &sp->lib_adds);
   lj_wbuf_addn(&sp->out, ljp_header, sizeof(ljp_header));
 }
 
